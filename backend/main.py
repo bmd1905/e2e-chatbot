@@ -19,6 +19,7 @@ app = FastAPI(
     title="E2E Chatbot Platform",
     description="A fully-featured chatbot platform with authentication, subscriptions, and more.",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 app.include_router(auth_router)
