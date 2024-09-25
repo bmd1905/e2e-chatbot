@@ -1,7 +1,19 @@
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 
 from .core.database import init_db
 from .routers import auth_router
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    try:
+        await init_db()
+        yield
+    finally:
+        pass
+
 
 app = FastAPI(
     title="E2E Chatbot Platform",
@@ -10,11 +22,6 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
-
-
-@app.on_event("startup")
-async def startup_event():
-    await init_db()
 
 
 @app.get("/health", tags=["Health"])
