@@ -10,6 +10,7 @@ engine = create_async_engine(
     settings.database_url,
     echo=True,
     future=True,
+    connect_args={'statement_cache_size': 0},
 )
 
 async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -17,7 +18,6 @@ async_session_maker = sessionmaker(engine, class_=AsyncSession, expire_on_commit
 
 async def init_db():
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
 
 
