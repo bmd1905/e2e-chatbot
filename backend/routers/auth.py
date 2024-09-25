@@ -1,22 +1,21 @@
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import timedelta
 
-import jwt
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
-from jwt.exceptions import InvalidTokenError
-from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.future import select
 
 from ..core.config import settings
 from ..core.database import get_session
+from ..core.security import create_access_token, decode_access_token
+from ..crud.user import (
+    authenticate_user,
+    create_user,
+    get_user_by_email,
+    get_user_by_username,
+)
 from ..models.user import User
-from ..schemas.token import Token, TokenData
+from ..schemas.token import Token
 from ..schemas.user import UserCreate, UserOut
-
-# Initialize the password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # OAuth2 scheme for extracting the token
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
@@ -25,95 +24,27 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 router = APIRouter()
 
 
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    """
-    Verify a plain password against its hashed version.
-    """
-    return pwd_context.verify(plain_password, hashed_password)
-
-
-def get_password_hash(password: str) -> str:
-    """
-    Hash a password for storage.
-    """
-    return pwd_context.hash(password)
-
-
-async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User]:
-    """
-    Retrieve a user from the database by username.
-    """
-    result = await db.execute(select(User).where(User.username == username))
-    return result.scalars().first()
-
-
-async def get_user_by_email(db: AsyncSession, email: str) -> Optional[User]:
-    """
-    Retrieve a user from the database by email.
-    """
-    result = await db.execute(select(User).where(User.email == email))
-    return result.scalars().first()
-
-
-async def authenticate_user(
-    db: AsyncSession, username: str, password: str
-) -> Optional[User]:
-    """
-    Authenticate a user by username/email and password.
-    """
-    user = await get_user_by_username(db, username)
-    if not user:
-        user = await get_user_by_email(db, username)
-    if not user:
-        return None
-    if not verify_password(password, user.password_hash):
-        return None
-    if not user.is_active:
-        return None
-    return user
-
-
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-    """
-    Create a JWT access token.
-    """
-    to_encode = data.copy()
-    expire = datetime.utcnow() + (
-        expires_delta
-        if expires_delta
-        else timedelta(minutes=settings.access_token_expire_minutes)
-    )
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(
-        to_encode, settings.secret_key, algorithm=settings.algorithm
-    )
-    return encoded_jwt
-
-
 async def get_current_user(
     token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_session)
 ) -> User:
     """
     Retrieve the current user based on the JWT token.
     """
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(
-            token, settings.secret_key, algorithms=[settings.algorithm]
+    payload = decode_access_token(token)
+    username: str = payload.get("sub")
+    if username is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
         )
-        username: str = payload.get("sub")
-        if username is None:
-            raise credentials_exception
-        token_data = TokenData(username=username)
-    except (InvalidTokenError, AttributeError):
-        raise credentials_exception
-    user = await get_user_by_username(db, username=token_data.username)
+    user = await get_user_by_username(db, username=username)
     if user is None:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not found",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     return user
 
 
@@ -145,16 +76,7 @@ async def register_user(
     if existing_user:
         raise HTTPException(status_code=400, detail="Username already taken")
 
-    hashed_password = get_password_hash(user_in.password)
-    new_user = User(
-        email=user_in.email,
-        username=user_in.username,
-        password_hash=hashed_password,
-        is_active=True,
-    )
-    db.add(new_user)
-    await db.commit()
-    await db.refresh(new_user)
+    new_user = await create_user(db, user_in)
 
     return UserOut(
         id=str(new_user.id), email=new_user.email, username=new_user.username
@@ -174,7 +96,6 @@ async def login_for_access_token(
       - **db**: Database session dependency.
     - **Returns**: A JWT access token.
     """
-
     # Authenticate the user
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:

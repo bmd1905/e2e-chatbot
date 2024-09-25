@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from .core.database import init_db
-from .routers import auth  # Import the auth router
+from .routers import auth_router
 
 app = FastAPI(
     title="E2E Chatbot Platform",
@@ -9,7 +9,7 @@ app = FastAPI(
     version="1.0.0",
 )
 
-app.include_router(auth.router)
+app.include_router(auth_router)
 
 
 @app.on_event("startup")
