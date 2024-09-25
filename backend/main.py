@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from .core.database import init_db
-from .routers import auth_router
+from .routers import auth_router, chatbot_router
 
 
 @asynccontextmanager
@@ -23,6 +23,7 @@ app = FastAPI(
 )
 
 app.include_router(auth_router)
+app.include_router(chatbot_router)
 
 
 @app.get("/health", tags=["Health"])
