@@ -3,10 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from .. import logger
 from ..core.database import get_session
+from ..crud.conversation import save_conversation
 from ..models.user import User
-from ..services.prompt_optim import PromptOptimWorkflow
 from ..routers.auth import get_current_active_user
 from ..schemas.chatbot import ChatRequest, ChatResponse
+from ..services.prompt_optim import PromptOptimWorkflow
 
 router = APIRouter(
     prefix="/chatbot",
@@ -43,9 +44,7 @@ async def chat_endpoint(
 
         response_text = str(result).strip()
 
-        # (Optional) Save the conversation to the database
-        # This step requires implementing CRUD operations for Conversation and Message models
-        # await save_conversation(db, current_user.id, chat_request.prompt, response_text)
+        await save_conversation(db, current_user.id, chat_request.prompt, response_text)
 
         return ChatResponse(response=response_text, metadata=chat_request.metadata)
 
