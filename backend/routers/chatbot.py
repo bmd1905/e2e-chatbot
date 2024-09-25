@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from .. import logger
 from ..core.database import get_session
 from ..models.user import User
-from ..optimized_prompt_workflow import ChatbotWorkflow
+from ..services.prompt_optim import PromptOptimWorkflow
 from ..routers.auth import get_current_active_user
 from ..schemas.chatbot import ChatRequest, ChatResponse
 
@@ -31,7 +31,7 @@ async def chat_endpoint(
     """
     try:
         # Initialize the workflow
-        chatbot_workflow = ChatbotWorkflow(timeout=60, verbose=True)
+        chatbot_workflow = PromptOptimWorkflow(timeout=60, verbose=True)
 
         # Prepare history
         history_text = "\n".join(chat_request.history) if chat_request.history else ""

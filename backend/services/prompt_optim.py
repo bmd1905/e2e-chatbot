@@ -6,7 +6,7 @@ from llama_index.core.workflow import Event, StartEvent, StopEvent, Workflow, st
 from llama_index.llms.openai import OpenAI
 from pydantic import BaseModel
 
-from . import logger
+from .. import logger
 
 
 class OptimizePromptEvent(Event):
@@ -25,7 +25,7 @@ class OptimizePromptOut(BaseModel):
     optimized_prompt: str
 
 
-class ChatbotWorkflow(Workflow):
+class PromptOptimWorkflow(Workflow):
     llm = OpenAI(model="gpt-4o", max_tokens=32, temperature=0.2)
     eval_llm = llm.as_structured_llm(output_cls=EvaluatePromptOut)
     optim_llm = llm.as_structured_llm(output_cls=OptimizePromptOut)
@@ -89,7 +89,7 @@ class ChatbotWorkflow(Workflow):
 
 async def main():
     # Initialize the workflow
-    chatbot_workflow = ChatbotWorkflow(timeout=60, verbose=True)
+    chatbot_workflow = PromptOptimWorkflow(timeout=60, verbose=True)
 
     # Example user prompt
     user_prompt = "MLOps?"
