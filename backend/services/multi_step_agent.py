@@ -1,9 +1,11 @@
 import asyncio
 from typing import Dict, List
 
+from llama_index.core.prompts import PromptTemplate
 from llama_index.core.workflow import Event, Workflow, step
+from llama_index.llms.groq import Groq
 from llama_index.llms.openai import OpenAI
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .. import logger
 
@@ -23,20 +25,32 @@ class AgentResponse(BaseModel):
     subtask_results: Dict[str, str]
 
 
+class SubtasksOut(BaseModel):
+    subtasks: List[str] = Field(
+        ..., description="List of subtasks to complete the user request."
+    )
+
+
 class MultiStepAgent(Workflow):
-    llm = OpenAI(model="gpt-4o-mini", max_tokens=1024, temperature=0.7)
+    # llm = OpenAI(model="gpt-4o-mini", max_tokens=1024, temperature=0.7)
+    llm = Groq("llama-3.1-8b-instant")
+    # llm = Groq("llama-3.1-70b-versatile")
 
     @step
     async def decompose_task(self, event: Event) -> Event:
         request = event.payload
-        prompt = (
-            f"Break down the following user request into clear, actionable subtasks. "
-            f"Consider each logical step or component needed to fulfill the request:\n{request.user_input}"
+        prompt = PromptTemplate(
+            "Break down the following user request into a maximum of 3 clear, actionable, and self-contained subtasks. "
+            "Each subtask should represent a logical step towards fulfilling the request and have a specific, measurable outcome. "
+            "Consider the different components or stages involved in completing the request. "
+            "Provide sufficient context and instructions for each subtask to be executed independently:\n{user_input}"
         )
-        response = await self.llm.acomplete(prompt)
+        response = await self.llm.astructured_predict(
+            output_cls=SubtasksOut, prompt=prompt, user_input=request.user_input
+        )
         subtasks = [
             Subtask(description=task.strip())
-            for task in str(response).split("\n")
+            for task in response.subtasks
             if task.strip()
         ]
         request.subtasks = subtasks
@@ -66,8 +80,10 @@ class MultiStepAgent(Workflow):
             subtask.description: subtask.result for subtask in request.subtasks
         }
         prompt = (
-            f"Integrate the following subtask results into a single, coherent response. "
-            f"Ensure the final output is logically structured and all subtasks are addressed:\n{subtask_results}"
+            "Synthesize the following subtask results into a comprehensive and well-structured response. "
+            "Ensure a smooth flow of information and logical transitions between the different sections. "
+            "Address all subtasks in a coherent manner, maintaining clarity and conciseness. "
+            f"The final output should read as a unified whole, not a collection of separate parts:\n{subtask_results}"
         )
         response = await self.llm.acomplete(prompt)
         return Event(
@@ -80,48 +96,51 @@ class MultiStepAgent(Workflow):
     async def generate_final_response(self, event: Event) -> Event:
         response = event.payload
         prompt = (
-            f"Craft a final response in natural language based on the following information. "
-            f"Ensure the response is clear, concise, and flows naturally:\n{response.final_response}"
+            "Refine the following draft response into a polished and natural-sounding final answer. "
+            "Focus on clarity, conciseness, and a smooth, engaging writing style. "
+            "Ensure the response is easy to understand and free of any awkward phrasing or grammatical errors. "
+            "Maintain the original meaning and information while enhancing the overall quality of the writing:"
+            f"\n{response.final_response}"
         )
         final_response = await self.llm.acomplete(prompt)
         response.final_response = str(final_response).strip()
         return Event(payload=response)
 
+    async def execute_request_workflow(self, request: AgentRequest) -> str:
+        try:
+            # Task Decomposition
+            event = await self.decompose_task(Event(payload=request))
+            request = event.payload
+            logger.info(f"Subtasks: {request.subtasks}")
 
-async def process_user_request(user_input: str) -> str:
-    agent = MultiStepAgent(timeout=120, verbose=True)
-    request = AgentRequest(user_input=user_input)
+            # Parallel Execution
+            event = await self.execute_subtasks(Event(payload=request))
+            request = event.payload
 
-    try:
-        # Task Decomposition
-        event = await agent.decompose_task(Event(payload=request))
-        request = event.payload
-        logger.info(f"Subtasks: {request.subtasks}")
+            # Result Combination
+            event = await self.combine_results(Event(payload=request))
+            response = event.payload
 
-        # Parallel Execution
-        event = await agent.execute_subtasks(Event(payload=request))
-        request = event.payload
+            # Final Response Generation
+            event = await self.generate_final_response(Event(payload=response))
+            response = event.payload
 
-        # Result Combination
-        event = await agent.combine_results(Event(payload=request))
-        response = event.payload
+            return response.final_response
 
-        # Final Response Generation
-        event = await agent.generate_final_response(Event(payload=response))
-        response = event.payload
-
-        return response.final_response
-
-    except Exception as e:
-        logger.error(f"Error processing request: {str(e)}")
-        return "I apologize, but I encountered an error while processing your request. Please try again later."
+        except Exception as e:
+            logger.error(f"Error processing request: {str(e)}")
+            return "I apologize, but I encountered an error while processing your request. Please try again later."
 
 
 async def main():
     user_input = (
         "Write a blog post about the benefits of using AI in education in 2 paragraphs."
     )
-    final_response = await process_user_request(user_input)
+
+    agent = MultiStepAgent(timeout=120, verbose=True)
+    request = AgentRequest(user_input=user_input)
+
+    final_response = await agent.execute_request_workflow(request=request)
     logger.info(final_response)
 
 
