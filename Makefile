@@ -1,6 +1,10 @@
 # Description: Makefile for the project
-.PHONY: be, test
+.PHONY: fe, be, test
 
+
+fe:
+	@echo "Starting frontend"
+	poetry run python3 -m frontend.gradio_app
 
 be:
 	@echo "Starting backend"

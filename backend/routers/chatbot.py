@@ -9,6 +9,8 @@ from ..routers.auth import get_current_active_user
 from ..schemas.chatbot import ChatRequest, ChatResponse
 from ..services.multi_step_agent import AgentRequest, MultiStepAgent
 from ..services.prompt_optim import PromptOptimizationWorkflow
+from .auth import oauth2_scheme
+
 
 router = APIRouter(
     prefix="/api/v1/chatbot",
@@ -22,6 +24,7 @@ router = APIRouter(
 async def chat_endpoint(
     chat_request: ChatRequest,
     db: AsyncSession = Depends(get_session),
+    token: str = Depends(oauth2_scheme),
     current_user: User = Depends(get_current_active_user),
 ):
     """
