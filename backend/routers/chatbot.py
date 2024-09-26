@@ -7,10 +7,11 @@ from ..crud.conversation import save_conversation
 from ..models.user import User
 from ..routers.auth import get_current_active_user
 from ..schemas.chatbot import ChatRequest, ChatResponse
-from ..services.prompt_optim import PromptOptimWorkflow
+from ..services.multi_step_agent import AgentRequest, MultiStepAgent
+from ..services.prompt_optim import PromptOptimizationWorkflow
 
 router = APIRouter(
-    prefix="/chatbot",
+    prefix="/api/v1/chatbot",
     tags=["Chatbot"],
     dependencies=[Depends(get_current_active_user)],
     responses={404: {"description": "Not found"}},
@@ -25,25 +26,35 @@ async def chat_endpoint(
 ):
     """
     Endpoint to handle chatbot interactions.
-
-    - **prompt**: The user's message to the chatbot.
-    - **history**: Previous conversation messages.
-    - **metadata**: Additional data like user ID or session ID.
     """
     try:
-        # Initialize the workflow
-        chatbot_workflow = PromptOptimWorkflow(timeout=60, verbose=True)
+        if chat_request.agent_type == "prompt_optim":
+            # Initialize the PromptOptimizationWorkflow
+            chatbot_workflow = PromptOptimizationWorkflow(timeout=60, verbose=True)
 
-        # Prepare history
-        history_text = "\n".join(chat_request.history) if chat_request.history else ""
+            # Run the workflow
+            result = await chatbot_workflow.execute_request_workflow(
+                user_prompt=chat_request.prompt.strip(), history=chat_request.history
+            )
+        elif chat_request.agent_type == "multi_step":
+            # Initialize the MultiStepAgent
+            multi_step_agent = MultiStepAgent(timeout=120, verbose=True)
 
-        # Run the workflow
-        result = await chatbot_workflow.run(
-            user_prompt=chat_request.prompt.strip(), history=history_text
-        )
+            # Prepare the request
+            agent_request = AgentRequest(
+                user_input=chat_request.prompt.strip(), history=chat_request.history
+            )
+
+            # Run the workflow
+            result = await multi_step_agent.execute_request_workflow(
+                request=agent_request
+            )
+        else:
+            raise ValueError(f"Invalid agent type: {chat_request.agent_type}")
 
         response_text = str(result).strip()
 
+        # Save the conversation
         await save_conversation(db, current_user.id, chat_request.prompt, response_text)
 
         return ChatResponse(response=response_text, metadata=chat_request.metadata)

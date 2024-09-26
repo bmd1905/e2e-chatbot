@@ -7,6 +7,9 @@ class ChatRequest(BaseModel):
     prompt: str = Field(..., min_length=1, max_length=10_000)
     history: Optional[List[str]] = Field(default_factory=list)
     metadata: Optional[Dict[str, Any]] = {}
+    agent_type: str = Field(
+        ..., description="Type of agent to use: 'multi_step' or 'prompt_optim'"
+    )
 
 
 class ChatResponse(BaseModel):

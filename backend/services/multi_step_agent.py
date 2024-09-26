@@ -16,7 +16,8 @@ class Subtask(BaseModel):
 
 class AgentRequest(BaseModel):
     user_input: str
-    subtasks: List[Subtask] = []
+    history: List[str] = Field(default_factory=list)
+    subtasks: List[Subtask] = Field(default_factory=list)
 
 
 class AgentResponse(BaseModel):
@@ -121,8 +122,17 @@ class MultiStepAgent(Workflow):
 
     async def execute_request_workflow(self, request: AgentRequest) -> str:
         try:
+            # Include history in the decomposition step
+            history_text = "\n".join(request.history)
+            decomposition_prompt = (
+                f"Given the following conversation history:\n{history_text}\n\nUser request:"
+                f"{request.user_input}\n\nBreak down the user request into subtasks."
+            )
+
             # Task Decomposition
-            event = await self.decompose_task(Event(payload=request))
+            event = await self.decompose_task(
+                Event(payload=AgentRequest(user_input=decomposition_prompt))
+            )
             request = event.payload
             logger.info(f"Subtasks: {request.subtasks}")
 

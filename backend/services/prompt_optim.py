@@ -84,12 +84,14 @@ class PromptOptimizationWorkflow(Workflow):
         return StopEvent(result=str(chatbot_response).strip())
 
     async def execute_request_workflow(
-        self, user_prompt: str, history: Optional[str] = ""
+        self, user_prompt: str, history: Optional[List[str]] = None
     ) -> str:
         try:
+            history_text = "\n".join(history) if history else ""
+
             # Evaluate the prompt
             event = await self.evaluate_prompt(
-                StartEvent(user_prompt=user_prompt, history=history)
+                StartEvent(user_prompt=user_prompt, history=history_text)
             )
             if isinstance(event, OptimizePromptEvent):
                 # Optimize the prompt if needed
