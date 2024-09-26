@@ -6,7 +6,7 @@ from llama_index.core.workflow import Event, Workflow, step
 from llama_index.llms.groq import Groq
 from pydantic import BaseModel, Field
 
-from .. import logger
+from ... import logger
 
 
 class Subtask(BaseModel):
@@ -31,9 +31,7 @@ class SubtasksOut(BaseModel):
     )
 
 
-class MultiStepAgent(Workflow):
-    llm = Groq("llama-3.1-8b-instant", max_tokens=128)
-
+class MultiStepAgentWorkflow(Workflow):
     # Prompt templates
     decomposition_prompt_template = PromptTemplate(
         "Break down the following user request into a maximum of 3 clear, actionable, and self-contained subtasks. "
@@ -60,6 +58,10 @@ class MultiStepAgent(Workflow):
         "Ensure the response is easy to understand and free of any awkward phrasing or grammatical errors. "
         "Maintain the original meaning and information while enhancing the overall quality of the writing:\n{draft_response}"
     )
+
+    def __init__(self, timeout: int = 120, verbose: bool = True):
+        super().__init__(timeout=timeout, verbose=verbose)
+        self.llm = Groq("llama-3.1-8b-instant", max_tokens=128)
 
     @step
     async def decompose_task(self, event: Event) -> Event:
@@ -120,13 +122,15 @@ class MultiStepAgent(Workflow):
         response.final_response = str(final_response).strip()
         return Event(payload=response)
 
-    async def execute_request_workflow(self, request: AgentRequest) -> str:
+    async def execute_request_workflow(
+        self, user_input: str, history: list = None
+    ) -> str:
         try:
             # Include history in the decomposition step
-            history_text = "\n".join(request.history)
+            history_text = "\n".join(history)
             decomposition_prompt = (
                 f"Given the following conversation history:\n{history_text}\n\nUser request:"
-                f"{request.user_input}\n\nBreak down the user request into subtasks."
+                f"{user_input}\n\nBreak down the user request into subtasks."
             )
 
             # Task Decomposition
@@ -160,7 +164,7 @@ async def main():
         "Write a blog post about the benefits of using AI in education in 2 paragraphs."
     )
 
-    agent = MultiStepAgent(timeout=120, verbose=True)
+    agent = MultiStepAgentWorkflow(timeout=120, verbose=True)
     request = AgentRequest(user_input=user_input)
 
     final_response = await agent.execute_request_workflow(request=request)

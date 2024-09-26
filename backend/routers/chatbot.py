@@ -7,10 +7,10 @@ from ..crud.conversation import save_conversation
 from ..models.user import User
 from ..routers.auth import get_current_active_user
 from ..schemas.chatbot import ChatRequest, ChatResponse
-from ..services.multi_step_agent import AgentRequest, MultiStepAgent
-from ..services.prompt_optim import PromptOptimizationWorkflow
+from ..services.chatbot_service import ChatbotService
 from .auth import oauth2_scheme
 
+chatbot_service = ChatbotService()
 
 router = APIRouter(
     prefix="/api/v1/chatbot",
@@ -27,33 +27,12 @@ async def chat_endpoint(
     token: str = Depends(oauth2_scheme),
     current_user: User = Depends(get_current_active_user),
 ):
-    """
-    Endpoint to handle chatbot interactions.
-    """
     try:
-        if chat_request.agent_type == "prompt_optim":
-            # Initialize the PromptOptimizationWorkflow
-            chatbot_workflow = PromptOptimizationWorkflow(timeout=60, verbose=True)
-
-            # Run the workflow
-            result = await chatbot_workflow.execute_request_workflow(
-                user_prompt=chat_request.prompt.strip(), history=chat_request.history
-            )
-        elif chat_request.agent_type == "multi_step":
-            # Initialize the MultiStepAgent
-            multi_step_agent = MultiStepAgent(timeout=120, verbose=True)
-
-            # Prepare the request
-            agent_request = AgentRequest(
-                user_input=chat_request.prompt.strip(), history=chat_request.history
-            )
-
-            # Run the workflow
-            result = await multi_step_agent.execute_request_workflow(
-                request=agent_request
-            )
-        else:
-            raise ValueError(f"Invalid agent type: {chat_request.agent_type}")
+        result = await chatbot_service.process_request(
+            user_input=chat_request.prompt.strip(),
+            workflow_type=chat_request.agent_type,
+            history=chat_request.history,
+        )
 
         response_text = str(result).strip()
 

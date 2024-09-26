@@ -7,7 +7,8 @@ from llama_index.llms.groq import Groq
 from llama_index.llms.openai import OpenAI
 from pydantic import BaseModel
 
-from .. import logger
+from ... import logger
+from .base_workflow import BaseWorkflow
 
 
 class OptimizePromptEvent(Event):
@@ -26,9 +27,8 @@ class OptimizePromptOutput(BaseModel):
     optimized_prompt: str
 
 
-class PromptOptimizationWorkflow(Workflow):
-    llm = Groq("llama-3.1-70b-versatile", max_tokens=64)
-
+class PromptOptimizationWorkflow(BaseWorkflow):
+    # Prompt templates
     evaluation_prompt_template = PromptTemplate(
         "Evaluate the following user prompt to determine if optimization is needed, "
         "considering the conversation history. "
@@ -39,6 +39,10 @@ class PromptOptimizationWorkflow(Workflow):
         "Improve the following user prompt to better fit the entire conversation history:\n"
         "Original Prompt: {original_prompt}"
     )
+
+    def __init__(self, timeout: int = 60, verbose: bool = True):
+        super().__init__(timeout=timeout, verbose=verbose)
+        self.llm = Groq("llama-3.1-70b-versatile", max_tokens=64)
 
     @step
     async def evaluate_prompt(
@@ -84,14 +88,14 @@ class PromptOptimizationWorkflow(Workflow):
         return StopEvent(result=str(chatbot_response).strip())
 
     async def execute_request_workflow(
-        self, user_prompt: str, history: Optional[List[str]] = None
+        self, user_input: str, history: list = None
     ) -> str:
         try:
             history_text = "\n".join(history) if history else ""
 
             # Evaluate the prompt
             event = await self.evaluate_prompt(
-                StartEvent(user_prompt=user_prompt, history=history_text)
+                StartEvent(user_prompt=user_input, history=history_text)
             )
             if isinstance(event, OptimizePromptEvent):
                 # Optimize the prompt if needed
