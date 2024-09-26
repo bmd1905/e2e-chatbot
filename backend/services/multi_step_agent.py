@@ -4,7 +4,6 @@ from typing import Dict, List
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.workflow import Event, Workflow, step
 from llama_index.llms.groq import Groq
-from llama_index.llms.openai import OpenAI
 from pydantic import BaseModel, Field
 
 from .. import logger
@@ -32,21 +31,42 @@ class SubtasksOut(BaseModel):
 
 
 class MultiStepAgent(Workflow):
-    # llm = OpenAI(model="gpt-4o-mini", max_tokens=1024, temperature=0.7)
-    llm = Groq("llama-3.1-8b-instant")
-    # llm = Groq("llama-3.1-70b-versatile")
+    llm = Groq("llama-3.1-8b-instant", max_tokens=128)
+
+    # Prompt templates
+    decomposition_prompt_template = PromptTemplate(
+        "Break down the following user request into a maximum of 3 clear, actionable, and self-contained subtasks. "
+        "Each subtask should represent a logical step towards fulfilling the request and have a specific, measurable outcome. "
+        "Consider the different components or stages involved in completing the request. "
+        "Provide sufficient context and instructions for each subtask to be executed independently:\n{user_input}"
+    )
+
+    execution_prompt_template = PromptTemplate(
+        "Perform the following subtask and provide a detailed result. "
+        "Ensure the response is clear and directly addresses the task:\n{subtask_description}"
+    )
+
+    combination_prompt_template = PromptTemplate(
+        "Synthesize the following subtask results into a comprehensive and well-structured response. "
+        "Ensure a smooth flow of information and logical transitions between the different sections. "
+        "Address all subtasks in a coherent manner, maintaining clarity and conciseness. "
+        "The final output should read as a unified whole, not a collection of separate parts:\n{subtask_results}"
+    )
+
+    final_response_prompt_template = PromptTemplate(
+        "Refine the following draft response into a polished and natural-sounding final answer. "
+        "Focus on clarity, conciseness, and a smooth, engaging writing style. "
+        "Ensure the response is easy to understand and free of any awkward phrasing or grammatical errors. "
+        "Maintain the original meaning and information while enhancing the overall quality of the writing:\n{draft_response}"
+    )
 
     @step
     async def decompose_task(self, event: Event) -> Event:
         request = event.payload
-        prompt = PromptTemplate(
-            "Break down the following user request into a maximum of 3 clear, actionable, and self-contained subtasks. "
-            "Each subtask should represent a logical step towards fulfilling the request and have a specific, measurable outcome. "
-            "Consider the different components or stages involved in completing the request. "
-            "Provide sufficient context and instructions for each subtask to be executed independently:\n{user_input}"
-        )
         response = await self.llm.astructured_predict(
-            output_cls=SubtasksOut, prompt=prompt, user_input=request.user_input
+            output_cls=SubtasksOut,
+            prompt=self.decomposition_prompt_template,
+            user_input=request.user_input,
         )
         subtasks = [
             Subtask(description=task.strip())
@@ -61,11 +81,11 @@ class MultiStepAgent(Workflow):
         request = event.payload
 
         async def execute_single_subtask(subtask: Subtask):
-            prompt = (
-                f"Perform the following subtask and provide a detailed result. "
-                f"Ensure the response is clear and directly addresses the task:\n{subtask.description}"
+            response = await self.llm.acomplete(
+                self.execution_prompt_template.format(
+                    subtask_description=subtask.description
+                )
             )
-            response = await self.llm.acomplete(prompt)
             subtask.result = str(response).strip()
 
         await asyncio.gather(
@@ -79,13 +99,9 @@ class MultiStepAgent(Workflow):
         subtask_results = {
             subtask.description: subtask.result for subtask in request.subtasks
         }
-        prompt = (
-            "Synthesize the following subtask results into a comprehensive and well-structured response. "
-            "Ensure a smooth flow of information and logical transitions between the different sections. "
-            "Address all subtasks in a coherent manner, maintaining clarity and conciseness. "
-            f"The final output should read as a unified whole, not a collection of separate parts:\n{subtask_results}"
+        response = await self.llm.acomplete(
+            self.combination_prompt_template.format(subtask_results=subtask_results)
         )
-        response = await self.llm.acomplete(prompt)
         return Event(
             payload=AgentResponse(
                 final_response=str(response).strip(), subtask_results=subtask_results
@@ -95,14 +111,11 @@ class MultiStepAgent(Workflow):
     @step
     async def generate_final_response(self, event: Event) -> Event:
         response = event.payload
-        prompt = (
-            "Refine the following draft response into a polished and natural-sounding final answer. "
-            "Focus on clarity, conciseness, and a smooth, engaging writing style. "
-            "Ensure the response is easy to understand and free of any awkward phrasing or grammatical errors. "
-            "Maintain the original meaning and information while enhancing the overall quality of the writing:"
-            f"\n{response.final_response}"
+        final_response = await self.llm.acomplete(
+            self.final_response_prompt_template.format(
+                draft_response=response.final_response
+            )
         )
-        final_response = await self.llm.acomplete(prompt)
         response.final_response = str(final_response).strip()
         return Event(payload=response)
 
