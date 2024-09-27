@@ -1,14 +1,22 @@
 import asyncio
-from typing import List, Optional
+from typing import List, Optional, Dict
+from enum import Enum
 
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.workflow import Event, StartEvent, StopEvent, Workflow, step
 from llama_index.llms.groq import Groq
-from llama_index.llms.openai import OpenAI
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.llms import ChatMessage
 from pydantic import BaseModel
 
 from ... import logger
 from .base_workflow import BaseWorkflow
+
+
+class MessageRole(Enum):
+    HUMAN = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
 
 
 class OptimizePromptEvent(Event):
@@ -37,12 +45,13 @@ class PromptOptimizationWorkflow(BaseWorkflow):
 
     optimization_prompt_template = PromptTemplate(
         "Improve the following user prompt to better fit the entire conversation history:\n"
-        "Original Prompt: {original_prompt}"
+        "Original Prompt: {original_prompt}\nConversation History: {history}"
     )
 
     def __init__(self, timeout: int = 60, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
-        self.llm = Groq("llama-3.1-70b-versatile", max_tokens=64)
+        self.llm = Groq("llama-3.1-70b-versatile", max_tokens=512)
+        self.memory = ChatMemoryBuffer.from_defaults(token_limit=1024)
 
     @step
     async def evaluate_prompt(
@@ -73,6 +82,7 @@ class PromptOptimizationWorkflow(BaseWorkflow):
             output_cls=OptimizePromptOutput,
             prompt=self.optimization_prompt_template,
             original_prompt=event.optimized_prompt,
+            history=event.get("history", ""),
         )
         optimized_prompt = optimization_response.optimized_prompt
 
@@ -88,14 +98,36 @@ class PromptOptimizationWorkflow(BaseWorkflow):
         return StopEvent(result=str(chatbot_response).strip())
 
     async def execute_request_workflow(
-        self, user_input: str, history: list = None
+        self, user_input: str, history: List[Dict[str, str]] = None
     ) -> str:
         try:
-            history_text = "\n".join(history) if history else ""
+            # Convert history to ChatMessage objects and add to memory
+            if history:
+                for message in history:
+                    role = message.get("role", "").upper()
+                    if role == "USER":
+                        role = MessageRole.HUMAN
+                    elif role == "ASSISTANT":
+                        role = MessageRole.ASSISTANT
+                    else:
+                        role = MessageRole.SYSTEM
+                    self.memory.put(
+                        ChatMessage(role=role, content=message.get("content", ""))
+                    )
+
+            # Add the current user input to memory
+            self.memory.put(ChatMessage(role=MessageRole.HUMAN, content=user_input))
+
+            # Get the chat history as a string
+            chat_history = "\n".join(
+                [f"{msg.role.value}: {msg.content}" for msg in self.memory.get()]
+            )
+            
+            logger.info(f"Chat History: {chat_history}")
 
             # Evaluate the prompt
             event = await self.evaluate_prompt(
-                StartEvent(user_prompt=user_input, history=history_text)
+                StartEvent(user_prompt=user_input, history=chat_history)
             )
             if isinstance(event, OptimizePromptEvent):
                 # Optimize the prompt if needed
@@ -103,7 +135,14 @@ class PromptOptimizationWorkflow(BaseWorkflow):
 
             # Generate the final response
             response_event = await self.generate_response(event)
-            return response_event.result
+            final_response = response_event.result
+
+            # Add the final response to memory
+            self.memory.put(
+                ChatMessage(role=MessageRole.ASSISTANT, content=final_response)
+            )
+
+            return final_response
 
         except Exception as e:
             logger.error(f"Error processing request: {str(e)}")
@@ -118,17 +157,17 @@ async def main():
     user_prompt = "MLOps?"
 
     # Example conversation history
-    conversation_history: Optional[List[str]] = [
-        "User: Hi, I need help with machine learning.",
-        "Chatbot: Sure, I'd be happy to help you with Machine Learning",
+    conversation_history: Optional[List[Dict[str, str]]] = [
+        {"role": "user", "content": "Hi, I need help with machine learning."},
+        {"role": "assistant", "content": "Sure, I'd be happy to help you with Machine Learning."},
     ]
 
     logger.info(f"User: {user_prompt}")
 
-    # Run the workflow with history as an optional argument
+    # Run the workflow with history
     final_response = await chatbot_workflow.execute_request_workflow(
-        user_prompt=user_prompt,
-        history="\n".join(conversation_history) if conversation_history else "",
+        user_input=user_prompt,
+        history=conversation_history,
     )
 
     # Print the chatbot's response

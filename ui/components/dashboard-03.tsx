@@ -59,7 +59,7 @@ export default function Dashboard() {
   const router = useRouter()
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
-  const [agentType, setAgentType] = useState('multi_step')
+  const [agentType, setAgentType] = useState('prompt_optim')
 
   useEffect(() => {
     // Fetch initial data if needed

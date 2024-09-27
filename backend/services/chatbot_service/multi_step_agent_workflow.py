@@ -1,12 +1,21 @@
 import asyncio
+from enum import Enum
 from typing import Dict, List
 
+from llama_index.core.llms import ChatMessage
+from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.prompts import PromptTemplate
 from llama_index.core.workflow import Event, Workflow, step
 from llama_index.llms.groq import Groq
 from pydantic import BaseModel, Field
 
 from ... import logger
+
+
+class MessageRole(Enum):
+    HUMAN = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
 
 
 class Subtask(BaseModel):
@@ -16,7 +25,7 @@ class Subtask(BaseModel):
 
 class AgentRequest(BaseModel):
     user_input: str
-    history: List[str] = Field(default_factory=list)
+    history: List[Dict[str, str]] = Field(default_factory=list)
     subtasks: List[Subtask] = Field(default_factory=list)
 
 
@@ -61,7 +70,8 @@ class MultiStepAgentWorkflow(Workflow):
 
     def __init__(self, timeout: int = 120, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
-        self.llm = Groq("llama-3.1-8b-instant", max_tokens=64)
+        self.llm = Groq("llama-3.1-8b-instant", max_tokens=512)
+        self.memory = ChatMemoryBuffer.from_defaults(token_limit=1024)
 
     @step
     async def decompose_task(self, event: Event) -> Event:
@@ -123,20 +133,35 @@ class MultiStepAgentWorkflow(Workflow):
         return Event(payload=response)
 
     async def execute_request_workflow(
-        self, user_input: str, history: list = None
+        self, user_input: str, history: List[Dict[str, str]] = None
     ) -> str:
         try:
-            # Convert history to text, handling both string and dict formats
+            # Convert history to ChatMessage objects and add to memory
             if history:
-                history_text = "\n".join(
-                    msg["content"] if isinstance(msg, dict) else str(msg)
-                    for msg in history
-                )
-            else:
-                history_text = ""
+                for message in history:
+                    role = message.get("role", "").upper()
+                    if role == "USER":
+                        role = MessageRole.HUMAN
+                    elif role == "ASSISTANT":
+                        role = MessageRole.ASSISTANT
+                    else:
+                        role = MessageRole.SYSTEM
+                    self.memory.put(
+                        ChatMessage(role=role, content=message.get("content", ""))
+                    )
+
+            # Add the current user input to memory
+            self.memory.put(ChatMessage(role=MessageRole.HUMAN, content=user_input))
+
+            # Get the chat history as a string
+            chat_history = "\n".join(
+                [f"{msg.role.value}: {msg.content}" for msg in self.memory.get()]
+            )
+            
+            logger.info(f"Chat History: {chat_history}")
 
             decomposition_prompt = (
-                f"Given the following conversation history:\n{history_text}\n\nUser request:"
+                f"Given the following conversation history:\n{chat_history}\n\nUser request:"
                 f"{user_input}\n\nBreak down the user request into subtasks."
             )
 
@@ -159,6 +184,11 @@ class MultiStepAgentWorkflow(Workflow):
             event = await self.generate_final_response(Event(payload=response))
             response = event.payload
 
+            # Add the final response to memory
+            self.memory.put(
+                ChatMessage(role=MessageRole.ASSISTANT, content=response.final_response)
+            )
+
             return response.final_response
 
         except Exception as e:
@@ -172,9 +202,7 @@ async def main():
     )
 
     agent = MultiStepAgentWorkflow(timeout=120, verbose=True)
-    request = AgentRequest(user_input=user_input)
-
-    final_response = await agent.execute_request_workflow(request=request)
+    final_response = await agent.execute_request_workflow(user_input=user_input)
     logger.info(final_response)
 
 
