@@ -24,7 +24,6 @@ router = APIRouter(
 async def chat_endpoint(
     chat_request: ChatRequest,
     db: AsyncSession = Depends(get_session),
-    token: str = Depends(oauth2_scheme),
     current_user: User = Depends(get_current_active_user),
 ):
     try:
@@ -42,7 +41,6 @@ async def chat_endpoint(
         return ChatResponse(response=response_text, metadata=chat_request.metadata)
 
     except Exception as e:
-        # Log the error
         logger.error(f"Chatbot error: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -15,6 +15,7 @@ import {
   SquareUser,
   Triangle,
   Turtle,
+  LogOut,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -43,8 +44,46 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip"; // Import TooltipProvider
+import { useState, useEffect } from 'react'
+import api from '@/lib/api'
+import { useAuth } from '@/hooks/useAuth'
+import { useRouter } from 'next/navigation'
+
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
 
 export default function Dashboard() {
+  const { logout } = useAuth()
+  const router = useRouter()
+  const [messages, setMessages] = useState<Message[]>([])
+  const [inputMessage, setInputMessage] = useState('')
+  const [agentType, setAgentType] = useState('multi_step')
+
+  useEffect(() => {
+    // Fetch initial data if needed
+  }, [])
+
+  const handleSendMessage = async () => {
+    try {
+      const response = await api.post('/api/v1/chatbot/chat', {
+        prompt: inputMessage,
+        agent_type: agentType,
+        history: messages,
+      })
+      setMessages([...messages, { role: 'user', content: inputMessage }, { role: 'assistant', content: response.data.response }])
+      setInputMessage('')
+    } catch (error) {
+      console.error('Error sending message:', error)
+    }
+  }
+
+  const handleLogout = () => {
+    logout()
+    router.push('/')
+  }
+
   return (
     <TooltipProvider>
       <div className="grid h-screen w-full pl-[56px]">
@@ -160,6 +199,22 @@ export default function Dashboard() {
               </TooltipTrigger>
               <TooltipContent side="right" sideOffset={5}>
                 Account
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="mt-auto rounded-lg"
+                  aria-label="Logout"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="size-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="right" sideOffset={5}>
+                Logout
               </TooltipContent>
             </Tooltip>
           </nav>
@@ -413,8 +468,20 @@ export default function Dashboard() {
               <Badge variant="outline" className="absolute right-3 top-3">
                 Output
               </Badge>
-              <div className="flex-1" />
+              <div className="flex-1 overflow-auto">
+                {messages.map((msg, index) => (
+                  <div key={index} className={`mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
+                    <span className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
+                      {msg.content}
+                    </span>
+                  </div>
+                ))}
+              </div>
               <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  handleSendMessage()
+                }}
                 className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring"
                 x-chunk="A form for sending a message to an AI chatbot. The form has a textarea and buttons to upload files and record audio."
               >
@@ -425,6 +492,8 @@ export default function Dashboard() {
                   id="message"
                   placeholder="Type your message here..."
                   className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0"
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
                 />
                 <div className="flex items-center p-3 pt-0">
                   <Tooltip>

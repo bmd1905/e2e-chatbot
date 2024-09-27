@@ -1,6 +1,7 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from .core.database import init_db
 from .routers import auth_router, chatbot_router
@@ -20,6 +21,15 @@ app = FastAPI(
     description="A fully-featured chatbot platform with authentication, subscriptions, and more.",
     version="1.0.0",
     lifespan=lifespan,
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # Add your frontend URL
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(auth_router)

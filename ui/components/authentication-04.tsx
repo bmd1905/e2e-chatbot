@@ -1,27 +1,51 @@
+import { useState } from "react"
 import Image from "next/image"
 import Link from "next/link"
+import { useRouter } from 'next/navigation'
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import api from "@/lib/api"
 
-export default function Dashboard() {
+export default function Login({ onLoginSuccess }: { onLoginSuccess: (userData: any) => void }) {
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError] = useState('')
+  const router = useRouter()
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      const formData = new FormData();
+      formData.append('username', email);
+      formData.append('password', password);
+
+      const response = await api.post('/token', formData, {
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        }
+      });
+      localStorage.setItem('token', response.data.access_token)
+      onLoginSuccess(response.data)
+      router.push('/dashboard')
+    } catch (err) {
+      setError('Invalid credentials')
+    }
+  }
+
   return (
     <div className="w-full lg:grid lg:min-h-[600px] lg:grid-cols-2 xl:min-h-[800px]">
       <div className="flex items-center justify-center py-12">
         <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <h1 className="text-3xl font-bold">Login</h1>
-            <p className="text-balance text-muted-foreground">
-              Enter your email below to login to your account
-            </p>
-          </div>
-          <div className="grid gap-4">
+          <form onSubmit={handleLogin} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
                 id="email"
                 type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 placeholder="m@example.com"
                 required
               />
@@ -36,15 +60,22 @@ export default function Dashboard() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input 
+                id="password" 
+                type="password" 
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required 
+              />
             </div>
+            {error && <p className="text-red-500">{error}</p>}
             <Button type="submit" className="w-full">
               Login
             </Button>
             <Button variant="outline" className="w-full">
               Login with Google
             </Button>
-          </div>
+          </form>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{" "}
             <Link href="#" className="underline">

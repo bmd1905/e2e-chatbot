@@ -25,10 +25,13 @@ def login(username: str, password: str) -> str:
 
 
 def _prepare_api_data(message: str, history: list, agent_type: str) -> dict:
-    flattened_history = [item for sublist in history for item in sublist]
+    formatted_history = [
+        {"role": "user" if i % 2 == 0 else "assistant", "content": msg}
+        for i, msg in enumerate(history)
+    ]
     return {
         "prompt": message,
-        "history": flattened_history,
+        "history": formatted_history,
         "agent_type": agent_type,
         "metadata": {},
     }

@@ -83,37 +83,20 @@ async def register_user(
     )
 
 
-@router.post("/token", response_model=Token)
+@router.post("/token")
 async def login_for_access_token(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: AsyncSession = Depends(get_session),
+    db: AsyncSession = Depends(get_session)
 ):
-    """
-    Authenticate the user and return an access token.
-
-    - **Parameters**:
-      - **form_data**: The OAuth2 form data containing username and password.
-      - **db**: Database session dependency.
-    - **Returns**: A JWT access token.
-    """
-    # Authenticate the user
     user = await authenticate_user(db, form_data.username, form_data.password)
     if not user:
-        # Raise an HTTP 401 Unauthorized error if authentication fails
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect username, email, or password",
+            detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-
-    # Create a new access token
-    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = create_access_token(
-        data={"sub": user.username}, expires_delta=access_token_expires
-    )
-
-    # Return the access token
-    return Token(access_token=access_token, token_type="bearer")
+    access_token = create_access_token(data={"sub": user.username})
+    return {"access_token": access_token, "token_type": "bearer"}
 
 
 @router.get("/users/me/", response_model=UserOut)

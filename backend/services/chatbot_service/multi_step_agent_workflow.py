@@ -61,7 +61,7 @@ class MultiStepAgentWorkflow(Workflow):
 
     def __init__(self, timeout: int = 120, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
-        self.llm = Groq("llama-3.1-8b-instant", max_tokens=128)
+        self.llm = Groq("llama-3.1-8b-instant", max_tokens=64)
 
     @step
     async def decompose_task(self, event: Event) -> Event:
@@ -126,8 +126,15 @@ class MultiStepAgentWorkflow(Workflow):
         self, user_input: str, history: list = None
     ) -> str:
         try:
-            # Include history in the decomposition step
-            history_text = "\n".join(history)
+            # Convert history to text, handling both string and dict formats
+            if history:
+                history_text = "\n".join(
+                    msg["content"] if isinstance(msg, dict) else str(msg)
+                    for msg in history
+                )
+            else:
+                history_text = ""
+
             decomposition_prompt = (
                 f"Given the following conversation history:\n{history_text}\n\nUser request:"
                 f"{user_input}\n\nBreak down the user request into subtasks."
