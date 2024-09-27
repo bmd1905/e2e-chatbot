@@ -5,11 +5,12 @@ from typing import Dict, List
 from llama_index.core.llms import ChatMessage
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.prompts import PromptTemplate
-from llama_index.core.workflow import Event, Workflow, step
+from llama_index.core.workflow import Event, step
 from llama_index.llms.groq import Groq
 from pydantic import BaseModel, Field
 
 from ... import logger
+from .base_workflow import BaseWorkflow
 
 
 class MessageRole(Enum):
@@ -40,7 +41,7 @@ class SubtasksOut(BaseModel):
     )
 
 
-class MultiStepAgentWorkflow(Workflow):
+class MultiStepAgentWorkflow(BaseWorkflow):
     # Prompt templates
     decomposition_prompt_template = PromptTemplate(
         "Break down the following user request into a maximum of 3 clear, actionable, and self-contained subtasks. "
@@ -68,9 +69,9 @@ class MultiStepAgentWorkflow(Workflow):
         "Maintain the original meaning and information while enhancing the overall quality of the writing:\n{draft_response}"
     )
 
-    def __init__(self, timeout: int = 120, verbose: bool = True):
+    def __init__(self, timeout: int = 60, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
-        self.llm = Groq("llama-3.1-8b-instant", max_tokens=512)
+        self.llm = Groq("llama-3.1-70b-versatile", max_tokens=512)
         self.memory = ChatMemoryBuffer.from_defaults(token_limit=1024)
 
     @step
@@ -157,7 +158,7 @@ class MultiStepAgentWorkflow(Workflow):
             chat_history = "\n".join(
                 [f"{msg.role.value}: {msg.content}" for msg in self.memory.get()]
             )
-            
+
             logger.info(f"Chat History: {chat_history}")
 
             decomposition_prompt = (

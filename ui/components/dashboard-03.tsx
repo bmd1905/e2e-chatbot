@@ -6,7 +6,6 @@ import {
   CornerDownLeft,
   LifeBuoy,
   Mic,
-  Paperclip,
   Rabbit,
   Settings,
   Settings2,
@@ -19,6 +18,10 @@ import {
   Layers,
   Sparkles,
   MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -46,11 +49,12 @@ import {
   TooltipContent,
   TooltipTrigger,
   TooltipProvider,
-} from "@/components/ui/tooltip"; // Import TooltipProvider
-import { useState, useEffect } from 'react'
+} from "@/components/ui/tooltip";
+import { useState, useEffect, useRef } from 'react'
 import api from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
+import { useTheme } from "next-themes"
 
 interface Message {
   role: 'user' | 'assistant';
@@ -63,12 +67,18 @@ export default function Dashboard() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputMessage, setInputMessage] = useState('')
   const [agentType, setAgentType] = useState('simple')
+  const [isLoading, setIsLoading] = useState(false)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { setTheme, theme } = useTheme()
 
   useEffect(() => {
-    // Fetch initial data if needed
-  }, [])
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
 
   const handleSendMessage = async () => {
+    if (!inputMessage.trim()) return
+
+    setIsLoading(true)
     try {
       const response = await api.post('/api/v1/chatbot/chat', {
         prompt: inputMessage,
@@ -79,6 +89,20 @@ export default function Dashboard() {
       setInputMessage('')
     } catch (error) {
       console.error('Error sending message:', error)
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleFeedback = async (messageIndex: number, isPositive: boolean) => {
+    try {
+      await api.post('/api/v1/chatbot/feedback', {
+        message_id: messageIndex,
+        is_positive: isPositive
+      })
+      // Optionally update UI to show feedback has been recorded
+    } catch (error) {
+      console.error('Error sending feedback:', error)
     }
   }
 
@@ -406,6 +430,15 @@ export default function Dashboard() {
               <Share className="size-3.5" />
               Share
             </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+              className="ml-2"
+            >
+              {theme === "dark" ? <Sun className="h-[1.2rem] w-[1.2rem]" /> : <Moon className="h-[1.2rem] w-[1.2rem]" />}
+              <span className="sr-only">Toggle theme</span>
+            </Button>
           </header>
           <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3">
             <div
@@ -546,11 +579,37 @@ export default function Dashboard() {
               <div className="flex-1 overflow-auto">
                 {messages.map((msg, index) => (
                   <div key={index} className={`mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    <span className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}>
+                    <div className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
                       {msg.content}
-                    </span>
+                    </div>
+                    {msg.role === 'assistant' && (
+                      <div className="mt-1 flex justify-start space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleFeedback(index, true)}
+                        >
+                          <ThumbsUp className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleFeedback(index, false)}
+                        >
+                          <ThumbsDown className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ))}
+                {isLoading && (
+                  <div className="flex items-center space-x-2 text-muted-foreground">
+                    <div className="animate-pulse">●</div>
+                    <div className="animate-pulse animation-delay-200">●</div>
+                    <div className="animate-pulse animation-delay-400">●</div>
+                  </div>
+                )}
+                <div ref={messagesEndRef} />
               </div>
               <form
                 onSubmit={(e) => {
@@ -558,7 +617,6 @@ export default function Dashboard() {
                   handleSendMessage()
                 }}
                 className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring"
-                x-chunk="A form for sending a message to an AI chatbot. The form has a textarea and buttons to upload files and record audio."
               >
                 <Label htmlFor="message" className="sr-only">
                   Message
@@ -574,23 +632,14 @@ export default function Dashboard() {
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button variant="ghost" size="icon">
-                        <Paperclip className="size-4" />
-                        <span className="sr-only">Attach file</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Attach File</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon">
                         <Mic className="size-4" />
                         <span className="sr-only">Use Microphone</span>
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent side="top">Use Microphone</TooltipContent>
                   </Tooltip>
-                  <Button type="submit" size="sm" className="ml-auto gap-1.5">
-                    Send Message
+                  <Button type="submit" size="sm" className="ml-auto gap-1.5" disabled={isLoading}>
+                    {isLoading ? 'Sending...' : 'Send Message'}
                     <CornerDownLeft className="size-3.5" />
                   </Button>
                 </div>

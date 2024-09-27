@@ -3,7 +3,6 @@ from .multi_step_agent_workflow import MultiStepAgentWorkflow
 from .prompt_optimization_workflow import PromptOptimizationWorkflow
 from .simple_chatbot_workflow import SimpleChatbotWorkflow
 
-
 class WorkflowFactory:
     @staticmethod
     def create_workflow(workflow_type: str, **kwargs) -> BaseWorkflow:

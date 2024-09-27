@@ -6,7 +6,7 @@ from ..core.database import get_session
 from ..crud.conversation import save_conversation
 from ..models.user import User
 from ..routers.auth import get_current_active_user
-from ..schemas.chatbot import ChatRequest, ChatResponse
+from ..schemas.chatbot import ChatRequest, ChatResponse, FeedbackRequest
 from ..services.chatbot_service import ChatbotService
 from .auth import oauth2_scheme
 
@@ -18,7 +18,6 @@ router = APIRouter(
     dependencies=[Depends(get_current_active_user)],
     responses={404: {"description": "Not found"}},
 )
-
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat_endpoint(
@@ -45,4 +44,22 @@ async def chat_endpoint(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An error occurred while processing your request.",
+        )
+
+@router.post("/feedback")
+async def feedback_endpoint(
+    feedback: FeedbackRequest,
+    db: AsyncSession = Depends(get_session),
+    current_user: User = Depends(get_current_active_user),
+):
+    try:
+        # TODO: Implement feedback saving logic here
+        # For example:
+        # await save_feedback(db, current_user.id, feedback.message_id, feedback.is_positive)
+        return {"status": "Feedback received"}
+    except Exception as e:
+        logger.error(f"Feedback error: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An error occurred while processing your feedback.",
         )

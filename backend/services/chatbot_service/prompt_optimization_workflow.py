@@ -1,12 +1,12 @@
 import asyncio
-from typing import List, Optional, Dict
 from enum import Enum
+from typing import Dict, List, Optional
 
-from llama_index.core.prompts import PromptTemplate
-from llama_index.core.workflow import Event, StartEvent, StopEvent, Workflow, step
-from llama_index.llms.groq import Groq
-from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.llms import ChatMessage
+from llama_index.core.memory import ChatMemoryBuffer
+from llama_index.core.prompts import PromptTemplate
+from llama_index.core.workflow import Event, StartEvent, StopEvent, step
+from llama_index.llms.groq import Groq
 from pydantic import BaseModel
 
 from ... import logger
@@ -122,7 +122,7 @@ class PromptOptimizationWorkflow(BaseWorkflow):
             chat_history = "\n".join(
                 [f"{msg.role.value}: {msg.content}" for msg in self.memory.get()]
             )
-            
+
             logger.info(f"Chat History: {chat_history}")
 
             # Evaluate the prompt
@@ -159,7 +159,10 @@ async def main():
     # Example conversation history
     conversation_history: Optional[List[Dict[str, str]]] = [
         {"role": "user", "content": "Hi, I need help with machine learning."},
-        {"role": "assistant", "content": "Sure, I'd be happy to help you with Machine Learning."},
+        {
+            "role": "assistant",
+            "content": "Sure, I'd be happy to help you with Machine Learning.",
+        },
     ]
 
     logger.info(f"User: {user_prompt}")

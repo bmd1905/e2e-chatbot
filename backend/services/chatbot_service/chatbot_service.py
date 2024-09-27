@@ -1,5 +1,6 @@
+from typing import Dict, List
+
 from .workflow_factory import WorkflowFactory
-from typing import List, Dict
 
 
 class ChatbotService:
@@ -7,7 +8,10 @@ class ChatbotService:
         self.workflow_factory = WorkflowFactory()
 
     async def process_request(
-        self, user_input: str, workflow_type: str, history: List[Dict[str, str]] = None
+        self,
+        user_input: str,
+        workflow_type: str,
+        history: List[Dict[str, str]] = None,
     ) -> str:
         workflow = self.workflow_factory.create_workflow(workflow_type)
         return await workflow.execute_request_workflow(user_input, history)
