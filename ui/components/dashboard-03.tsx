@@ -50,7 +50,7 @@ import {
   TooltipTrigger,
   TooltipProvider,
 } from "@/components/ui/tooltip";
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, KeyboardEvent } from 'react'
 import api from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
@@ -70,29 +70,46 @@ export default function Dashboard() {
   const [isLoading, setIsLoading] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { setTheme, theme } = useTheme()
+  const [pendingMessage, setPendingMessage] = useState<Message | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return
+  const handleSendMessage = async (e: React.FormEvent | KeyboardEvent) => {
+    e.preventDefault();
+    if (!inputMessage.trim() || isLoading) return;
 
-    setIsLoading(true)
+    setIsLoading(true);
+    // Add the user's message to the UI immediately
+    const userMessage: Message = { role: 'user', content: inputMessage };
+    setMessages(prevMessages => [...prevMessages, userMessage]);
+    setPendingMessage({ role: 'assistant', content: '...' });
+    setInputMessage('');
+
     try {
       const response = await api.post('/api/v1/chatbot/chat', {
-        prompt: inputMessage,
+        prompt: userMessage.content,
         agent_type: agentType,
         history: messages,
-      })
-      setMessages([...messages, { role: 'user', content: inputMessage }, { role: 'assistant', content: response.data.response }])
-      setInputMessage('')
+      });
+      const aiMessage: Message = { role: 'assistant', content: response.data.response };
+      setMessages(prevMessages => [...prevMessages, aiMessage]);
+      setPendingMessage(null);
     } catch (error) {
-      console.error('Error sending message:', error)
+      console.error('Error sending message:', error);
+      setPendingMessage(null);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
+
+  const handleKeyPress = (e: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e);
+    }
+  };
 
   const handleFeedback = async (messageIndex: number, isPositive: boolean) => {
     try {
@@ -573,9 +590,9 @@ export default function Dashboard() {
               </form>
             </div>
             <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
-              <Badge variant="outline" className="absolute right-3 top-3">
+              {/* <Badge variant="outline" className="absolute right-3 top-3">
                 Output
-              </Badge>
+              </Badge> */}
               <div className="flex-1 overflow-auto">
                 {messages.map((msg, index) => (
                   <div key={index} className={`mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
@@ -602,6 +619,13 @@ export default function Dashboard() {
                     )}
                   </div>
                 ))}
+                {pendingMessage && (
+                  <div className="mb-4 text-left">
+                    <div className="inline-block p-2 rounded bg-secondary text-secondary-foreground">
+                      {pendingMessage.content}
+                    </div>
+                  </div>
+                )}
                 {isLoading && (
                   <div className="flex items-center space-x-2 text-muted-foreground">
                     <div className="animate-pulse">●</div>
@@ -611,13 +635,7 @@ export default function Dashboard() {
                 )}
                 <div ref={messagesEndRef} />
               </div>
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault()
-                  handleSendMessage()
-                }}
-                className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring"
-              >
+              <div className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring">
                 <Label htmlFor="message" className="sr-only">
                   Message
                 </Label>
@@ -627,6 +645,7 @@ export default function Dashboard() {
                   className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
                 />
                 <div className="flex items-center p-3 pt-0">
                   <Tooltip>
@@ -638,12 +657,17 @@ export default function Dashboard() {
                     </TooltipTrigger>
                     <TooltipContent side="top">Use Microphone</TooltipContent>
                   </Tooltip>
-                  <Button type="submit" size="sm" className="ml-auto gap-1.5" disabled={isLoading}>
+                  <Button 
+                    onClick={handleSendMessage} 
+                    size="sm" 
+                    className="ml-auto gap-1.5" 
+                    disabled={isLoading || !inputMessage.trim()}
+                  >
                     {isLoading ? 'Sending...' : 'Send Message'}
                     <CornerDownLeft className="size-3.5" />
                   </Button>
                 </div>
-              </form>
+              </div>
             </div>
           </main>
         </div>
