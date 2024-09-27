@@ -55,6 +55,9 @@ import api from '@/lib/api'
 import { useAuth } from '@/hooks/useAuth'
 import { useRouter } from 'next/navigation'
 import { useTheme } from "next-themes"
+import ReactMarkdown from 'react-markdown'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
 interface Message {
   role: 'user' | 'assistant';
@@ -453,7 +456,8 @@ export default function Dashboard() {
               onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
               className="ml-2"
             >
-              {theme === "dark" ? <Sun className="h-[1.2rem] w-[1.2rem]" /> : <Moon className="h-[1.2rem] w-[1.2rem]" />}
+              <Sun className="h-[1.2rem] w-[1.2rem] rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+              <Moon className="absolute h-[1.2rem] w-[1.2rem] rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
               <span className="sr-only">Toggle theme</span>
             </Button>
           </header>
@@ -590,14 +594,33 @@ export default function Dashboard() {
               </form>
             </div>
             <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
-              {/* <Badge variant="outline" className="absolute right-3 top-3">
-                Output
-              </Badge> */}
               <div className="flex-1 overflow-auto">
                 {messages.map((msg, index) => (
                   <div key={index} className={`mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
                     <div className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                      {msg.content}
+                      <ReactMarkdown
+                        components={{
+                          code({node, inline, className, children, ...props}) {
+                            const match = /language-(\w+)/.exec(className || '')
+                            return !inline && match ? (
+                              <SyntaxHighlighter
+                                style={tomorrow}
+                                language={match[1]}
+                                PreTag="div"
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            )
+                          }
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
                     </div>
                     {msg.role === 'assistant' && (
                       <div className="mt-1 flex justify-start space-x-2">
@@ -641,7 +664,7 @@ export default function Dashboard() {
                 </Label>
                 <Textarea
                   id="message"
-                  placeholder="Type your message here..."
+                  placeholder="Type your message here... (Markdown supported)"
                   className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0"
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
