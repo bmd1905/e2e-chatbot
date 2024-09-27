@@ -16,6 +16,9 @@ import {
   Triangle,
   Turtle,
   LogOut,
+  Layers,
+  Sparkles,
+  MessageSquare,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -233,7 +236,7 @@ export default function Dashboard() {
                 <DrawerHeader>
                   <DrawerTitle>Configuration</DrawerTitle>
                   <DrawerDescription>
-                    Configure the settings for the model and messages.
+                    Configure the settings for the model and agent type.
                   </DrawerDescription>
                 </DrawerHeader>
                 <form className="grid w-full items-start gap-6 overflow-auto p-4 pt-0">
@@ -303,10 +306,64 @@ export default function Dashboard() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {/* <div className="grid gap-3">
-                      <Label htmlFor="temperature">Temperature</Label>
-                      <Input id="temperature" type="number" placeholder="0.4" />
-                    </div> */}
+                    <div className="grid gap-3">
+                      <Label htmlFor="agent-type-mobile">Agent Type</Label>
+                      <Select value={agentType} onValueChange={setAgentType}>
+                        <SelectTrigger
+                          id="agent-type-mobile"
+                          className="items-start [&_[data-description]]:hidden"
+                        >
+                          <SelectValue placeholder="Select an agent type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="multi_step">
+                            <div className="flex items-start gap-3 text-muted-foreground">
+                              <Layers className="size-5" />
+                              <div className="grid gap-0.5">
+                                <p>
+                                  <span className="font-medium text-foreground">
+                                    Multi-Step Agent
+                                  </span>
+                                </p>
+                                <p className="text-xs" data-description>
+                                  Breaks down complex tasks into subtasks.
+                                </p>
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="prompt_optim">
+                            <div className="flex items-start gap-3 text-muted-foreground">
+                              <Sparkles className="size-5" />
+                              <div className="grid gap-0.5">
+                                <p>
+                                  <span className="font-medium text-foreground">
+                                    Prompt Optimization
+                                  </span>
+                                </p>
+                                <p className="text-xs" data-description>
+                                  Refines prompts for better results.
+                                </p>
+                              </div>
+                            </div>
+                          </SelectItem>
+                          <SelectItem value="simple">
+                            <div className="flex items-start gap-3 text-muted-foreground">
+                              <MessageSquare className="size-5" />
+                              <div className="grid gap-0.5">
+                                <p>
+                                  <span className="font-medium text-foreground">
+                                    Simple Chatbot
+                                  </span>
+                                </p>
+                                <p className="text-xs" data-description>
+                                  Basic conversational agent.
+                                </p>
+                              </div>
+                            </div>
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
                     <div className="grid gap-3">
                       <Label htmlFor="top-p">Top P</Label>
                       <Input id="top-p" type="number" placeholder="0.7" />
@@ -421,47 +478,65 @@ export default function Dashboard() {
                       </SelectContent>
                     </Select>
                   </div>
-                  {/* <div className="grid gap-3">
-                    <Label htmlFor="temperature">Temperature</Label>
-                    <Input id="temperature" type="number" placeholder="0.4" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-3">
-                      <Label htmlFor="top-p">Top P</Label>
-                      <Input id="top-p" type="number" placeholder="0.7" />
-                    </div>
-                    <div className="grid gap-3">
-                      <Label htmlFor="top-k">Top K</Label>
-                      <Input id="top-k" type="number" placeholder="0.0" />
-                    </div>
-                  </div> */}
-                </fieldset>
-                {/* <fieldset className="grid gap-6 rounded-lg border p-4">
-                  <legend className="-ml-1 px-1 text-sm font-medium">
-                    Messages
-                  </legend>
                   <div className="grid gap-3">
-                    <Label htmlFor="role">Role</Label>
-                    <Select defaultValue="system">
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a role" />
+                    <Label htmlFor="agent-type">Agent Type</Label>
+                    <Select value={agentType} onValueChange={setAgentType}>
+                      <SelectTrigger
+                        id="agent-type"
+                        className="items-start [&_[data-description]]:hidden"
+                      >
+                        <SelectValue placeholder="Select an agent type" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="system">System</SelectItem>
-                        <SelectItem value="user">User</SelectItem>
-                        <SelectItem value="assistant">Assistant</SelectItem>
+                        <SelectItem value="multi_step">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <Layers className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                <span className="font-medium text-foreground">
+                                  Multi-Step Agent
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                Breaks down complex tasks into subtasks.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="prompt_optim">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <Sparkles className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                <span className="font-medium text-foreground">
+                                  Prompt Optimization
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                Refines prompts for better results.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="simple">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <MessageSquare className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                <span className="font-medium text-foreground">
+                                  Simple Chatbot
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                Basic conversational agent.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-3">
-                    <Label htmlFor="content">Content</Label>
-                    <Textarea
-                      id="content"
-                      placeholder="You are a..."
-                      className="min-h-[9.5rem]"
-                    />
-                  </div>
-                </fieldset> */}
+                </fieldset>
               </form>
             </div>
             <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
