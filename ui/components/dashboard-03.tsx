@@ -469,7 +469,7 @@ export default function Dashboard() {
               <ScrollArea className="flex-1 pr-4">
                 {messages.map((msg, index) => (
                   <Card key={index} className={`mb-4 ${msg.role === 'user' ? 'ml-auto' : 'mr-auto'} max-w-[80%]`}>
-                    <CardContent className={`p-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                    <CardContent className={`p-3 ${msg.role === 'user' ? '' : 'bg-secondary text-secondary-foreground'}`}>
                       <ReactMarkdown
                         components={{
                           code({node, inline, className, children, ...props}) {
