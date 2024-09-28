@@ -23,6 +23,8 @@ import {
   Sun,
   Moon,
   Send,
+  Clipboard,
+  Check,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -78,6 +80,8 @@ export default function Dashboard() {
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const { setTheme, theme } = useTheme()
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null);
+  const [copiedResponse, setCopiedResponse] = useState(false);
+  const [copiedCode, setCopiedCode] = useState<{[key: number]: boolean}>({});
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -134,6 +138,18 @@ export default function Dashboard() {
     logout()
     router.push('/')
   }
+
+  const copyToClipboard = (text: string, type: 'response' | 'code', index?: number) => {
+    navigator.clipboard.writeText(text).then(() => {
+      if (type === 'response') {
+        setCopiedResponse(true);
+        setTimeout(() => setCopiedResponse(false), 2000);
+      } else if (type === 'code' && index !== undefined) {
+        setCopiedCode(prev => ({ ...prev, [index]: true }));
+        setTimeout(() => setCopiedCode(prev => ({ ...prev, [index]: false })), 2000);
+      }
+    });
+  };
 
   return (
     <TooltipProvider>
@@ -496,6 +512,12 @@ export default function Dashboard() {
                                   <div className="relative">
                                     <div className="absolute top-0 right-0 bg-muted text-muted-foreground text-xs px-2 py-1 rounded-bl">
                                       {match[1]}
+                                      <button
+                                        onClick={() => copyToClipboard(String(children), 'code', index)}
+                                        className="ml-2 focus:outline-none"
+                                      >
+                                        {copiedCode[index] ? <Check size={14} /> : <Clipboard size={14} />}
+                                      </button>
                                     </div>
                                     <SyntaxHighlighter
                                       style={tomorrow}
@@ -518,6 +540,15 @@ export default function Dashboard() {
                             {msg.content}
                           </ReactMarkdown>
                         </div>
+                        {msg.role === 'assistant' && (
+                          <Button
+                            onClick={() => copyToClipboard(msg.content, 'response')}
+                            className="mt-2 text-xs"
+                            variant="outline"
+                          >
+                            {copiedResponse ? 'Copied!' : 'Copy Response'}
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
@@ -531,9 +562,21 @@ export default function Dashboard() {
                 )}
                 {isLoading && (
                   <div className="flex items-center space-x-2 text-muted-foreground">
-                    <div className="animate-pulse">●</div>
-                    <div className="animate-pulse animation-delay-200">●</div>
-                    <div className="animate-pulse animation-delay-400">●</div>
+                    <motion.div
+                      className="w-2 h-2 bg-primary rounded-full"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, repeat: Infinity }}
+                    />
+                    <motion.div
+                      className="w-2 h-2 bg-primary rounded-full"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, delay: 0.2, repeat: Infinity }}
+                    />
+                    <motion.div
+                      className="w-2 h-2 bg-primary rounded-full"
+                      animate={{ scale: [1, 1.2, 1] }}
+                      transition={{ duration: 1, delay: 0.4, repeat: Infinity }}
+                    />
                   </div>
                 )}
               </ScrollArea>
