@@ -61,6 +61,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent } from "@/components/ui/card"
+import { motion } from "framer-motion";
 
 interface Message {
   role: 'user' | 'assistant';
@@ -468,33 +469,58 @@ export default function Dashboard() {
             <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-3">
               <ScrollArea className="flex-1 pr-4">
                 {messages.map((msg, index) => (
-                  <Card key={index} className={`mb-4 ${msg.role === 'user' ? 'ml-auto' : 'mr-auto'} max-w-[80%]`}>
-                    <CardContent className={`p-3 ${msg.role === 'user' ? '' : 'bg-secondary text-secondary-foreground'}`}>
-                      <ReactMarkdown
-                        components={{
-                          code({node, inline, className, children, ...props}) {
-                            const match = /language-(\w+)/.exec(className || '')
-                            return !inline && match ? (
-                              <SyntaxHighlighter
-                                style={tomorrow}
-                                language={match[1]}
-                                PreTag="div"
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                            ) : (
-                              <code className={className} {...props}>
-                                {children}
-                              </code>
-                            )
-                          }
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
-                    </CardContent>
-                  </Card>
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: index * 0.1 }}
+                  >
+                    <Card className={`mb-4 ${msg.role === 'user' ? 'ml-auto' : 'mr-auto'} max-w-[80%]`}>
+                      <CardContent className={`p-3 ${msg.role === 'user' ? '' : 'bg-secondary text-secondary-foreground'}`}>
+                        <div className="markdown-content">
+                          <ReactMarkdown
+                            components={{
+                              h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mb-4" {...props} />,
+                              h2: ({ node, ...props }) => <h2 className="text-xl font-semibold mb-3" {...props} />,
+                              h3: ({ node, ...props }) => <h3 className="text-lg font-medium mb-2" {...props} />,
+                              p: ({ node, ...props }) => <p className="mb-4" {...props} />,
+                              ul: ({ node, ...props }) => <ul className="list-disc pl-6 mb-4" {...props} />,
+                              ol: ({ node, ...props }) => <ol className="list-decimal pl-6 mb-4" {...props} />,
+                              li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                              blockquote: ({ node, ...props }) => (
+                                <blockquote className="border-l-4 border-primary pl-4 italic my-4" {...props} />
+                              ),
+                              code({ node, inline, className, children, ...props }) {
+                                const match = /language-(\w+)/.exec(className || '')
+                                return !inline && match ? (
+                                  <div className="relative">
+                                    <div className="absolute top-0 right-0 bg-muted text-muted-foreground text-xs px-2 py-1 rounded-bl">
+                                      {match[1]}
+                                    </div>
+                                    <SyntaxHighlighter
+                                      style={tomorrow}
+                                      language={match[1]}
+                                      PreTag="div"
+                                      className="rounded-md !mt-6 !mb-4"
+                                      {...props}
+                                    >
+                                      {String(children).replace(/\n$/, '')}
+                                    </SyntaxHighlighter>
+                                  </div>
+                                ) : (
+                                  <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded" {...props}>
+                                    {children}
+                                  </code>
+                                )
+                              }
+                            }}
+                          >
+                            {msg.content}
+                          </ReactMarkdown>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 ))}
                 {pendingMessage && (
                   <Card className="mb-4 mr-auto max-w-[80%]">
