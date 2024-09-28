@@ -83,20 +83,33 @@ export default function Dashboard() {
   const [pendingMessage, setPendingMessage] = useState<Message | null>(null);
   const [copiedResponse, setCopiedResponse] = useState(false);
   const [copiedCode, setCopiedCode] = useState<{[key: number]: boolean}>({});
+  const [isThinking, setIsThinking] = useState(false);
+  const [thinkingDots, setThinkingDots] = useState('');
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isThinking) {
+      interval = setInterval(() => {
+        setThinkingDots(dots => dots.length < 3 ? dots + '.' : '');
+      }, 500);
+    }
+    return () => clearInterval(interval);
+  }, [isThinking]);
 
   const handleSendMessage = async (e: React.FormEvent | KeyboardEvent) => {
     e.preventDefault();
     if (!inputMessage.trim() || isLoading) return;
 
     setIsLoading(true);
+    setIsThinking(true);
     // Add the user's message to the UI immediately
     const userMessage: Message = { role: 'user', content: inputMessage };
     setMessages(prevMessages => [...prevMessages, userMessage]);
-    setPendingMessage({ role: 'assistant', content: '...' });
+    setPendingMessage({ role: 'assistant', content: '' });
     setInputMessage('');
 
     try {
@@ -113,6 +126,7 @@ export default function Dashboard() {
       setPendingMessage(null);
     } finally {
       setIsLoading(false);
+      setIsThinking(false);
     }
   };
 
@@ -555,19 +569,15 @@ export default function Dashboard() {
                     </Card>
                   </motion.div>
                 ))}
-                {pendingMessage && (
+                {isThinking && (
                   <Card className="mb-4 mr-auto max-w-[80%]">
                     <CardContent className="p-3 bg-secondary text-secondary-foreground">
-                      {pendingMessage.content}
+                      <div className="flex items-center space-x-2">
+                        <span>Thinking</span>
+                        <span className="w-8">{thinkingDots}</span>
+                      </div>
                     </CardContent>
                   </Card>
-                )}
-                {isLoading && (
-                  <div className="flex items-center space-x-2 text-muted-foreground loading-indicator">
-                    <div className="w-2 h-2 bg-primary rounded-full" />
-                    <div className="w-2 h-2 bg-primary rounded-full" />
-                    <div className="w-2 h-2 bg-primary rounded-full" />
-                  </div>
                 )}
               </ScrollArea>
               <div className="mt-4">
