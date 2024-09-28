@@ -11,6 +11,10 @@ class ChatRequest(BaseModel):
     )
     history: Optional[List[Dict[str, str]]] = Field(default_factory=list)
     metadata: Optional[Dict[str, Any]] = Field(default_factory=dict)
+    model: str = Field(
+        ...,
+        description="The model to use for the chat. If not specified, the default model for the agent type will be used.",
+    )
 
 
 class FeedbackRequest(BaseModel):

@@ -4,7 +4,6 @@ from typing import Dict, List
 from llama_index.core.llms import ChatMessage
 from llama_index.core.memory import ChatMemoryBuffer
 from llama_index.core.workflow import Event, step
-from llama_index.llms.groq import Groq
 
 from ... import logger
 from .base_workflow import BaseWorkflow
@@ -19,7 +18,6 @@ class MessageRole(Enum):
 class SimpleChatbotWorkflow(BaseWorkflow):
     def __init__(self, timeout: int = 60, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
-        self.llm = Groq("llama-3.1-70b-versatile", max_tokens=512)
         self.memory = ChatMemoryBuffer.from_defaults(token_limit=1024)
 
     @step
@@ -34,8 +32,13 @@ class SimpleChatbotWorkflow(BaseWorkflow):
         return Event(payload=str(response).strip())
 
     async def execute_request_workflow(
-        self, user_input: str, history: List[Dict[str, str]] = None
+        self,
+        user_input: str,
+        history: List[Dict[str, str]] = None,
+        model: str = ...,
     ) -> str:
+        logger.info(f"Model: {model}")
+        self.set_model(model)  # Set the model before executing the workflow
         try:
             if history:
                 for message in history:

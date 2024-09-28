@@ -71,7 +71,6 @@ class MultiStepAgentWorkflow(BaseWorkflow):
 
     def __init__(self, timeout: int = 60, verbose: bool = True):
         super().__init__(timeout=timeout, verbose=verbose)
-        self.llm = Groq("llama-3.1-70b-versatile", max_tokens=512)
         self.memory = ChatMemoryBuffer.from_defaults(token_limit=1024)
 
     @step
@@ -134,8 +133,12 @@ class MultiStepAgentWorkflow(BaseWorkflow):
         return Event(payload=response)
 
     async def execute_request_workflow(
-        self, user_input: str, history: List[Dict[str, str]] = None
+        self,
+        user_input: str,
+        history: List[Dict[str, str]] = None,
+        model: str = "llama-3.1-70b-versatile"
     ) -> str:
+        self.set_model(model)  # Set the model before executing the workflow
         try:
             # Convert history to ChatMessage objects and add to memory
             if history:

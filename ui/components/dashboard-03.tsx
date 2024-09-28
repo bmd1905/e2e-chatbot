@@ -26,6 +26,7 @@ import {
   Clipboard,
   Check,
   User,
+  Zap,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -86,6 +87,7 @@ export default function Dashboard() {
   const [copiedCode, setCopiedCode] = useState<{[key: number]: boolean}>({});
   const [isThinking, setIsThinking] = useState(false);
   const [thinkingDots, setThinkingDots] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gpt-4o')
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
@@ -107,7 +109,6 @@ export default function Dashboard() {
 
     setIsLoading(true);
     setIsThinking(true);
-    // Add the user's message to the UI immediately
     const userMessage: Message = { role: 'user', content: inputMessage };
     setMessages(prevMessages => [...prevMessages, userMessage]);
     setPendingMessage({ role: 'assistant', content: '' });
@@ -117,6 +118,7 @@ export default function Dashboard() {
       const response = await api.post('/api/v1/chatbot/chat', {
         prompt: userMessage.content,
         agent_type: agentType,
+        model: selectedModel,
         history: messages,
       });
       const aiMessage: Message = { role: 'assistant', content: response.data.response };
@@ -176,114 +178,7 @@ export default function Dashboard() {
               <Triangle className="size-5 fill-foreground" />
             </Button>
           </div>
-          <nav className="grid gap-1 p-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-lg bg-muted"
-                  aria-label="Playground"
-                >
-                  <SquareTerminal className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Playground
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-lg"
-                  aria-label="Models"
-                >
-                  <Bot className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Models
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-lg"
-                  aria-label="API"
-                >
-                  <Code2 className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                API
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-lg"
-                  aria-label="Documentation"
-                >
-                  <Book className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Documentation
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-lg"
-                  aria-label="Settings"
-                >
-                  <Settings2 className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Settings
-              </TooltipContent>
-            </Tooltip>
-          </nav>
           <nav className="mt-auto grid gap-1 p-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="mt-auto rounded-lg"
-                  aria-label="Help"
-                >
-                  <LifeBuoy className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Help
-              </TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="mt-auto rounded-lg"
-                  aria-label="Account"
-                >
-                  <SquareUser className="size-5" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right" sideOffset={5}>
-                Account
-              </TooltipContent>
-            </Tooltip>
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -324,68 +219,6 @@ export default function Dashboard() {
                     <legend className="-ml-1 px-1 text-sm font-medium">
                       Settings
                     </legend>
-                    <div className="grid gap-3">
-                      <Label htmlFor="model">Model</Label>
-                      <Select>
-                        <SelectTrigger
-                          id="model"
-                          className="items-start [&_[data-description]]:hidden"
-                        >
-                          <SelectValue placeholder="Select a model" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="genesis">
-                            <div className="flex items-start gap-3 text-muted-foreground">
-                              <Rabbit className="size-5" />
-                              <div className="grid gap-0.5">
-                                <p>
-                                  Neural{" "}
-                                  <span className="font-medium text-foreground">
-                                    Genesis
-                                  </span>
-                                </p>
-                                <p className="text-xs" data-description>
-                                  Our fastest model for general use cases.
-                                </p>
-                              </div>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="explorer">
-                            <div className="flex items-start gap-3 text-muted-foreground">
-                              <Bird className="size-5" />
-                              <div className="grid gap-0.5">
-                                <p>
-                                  Neural{" "}
-                                  <span className="font-medium text-foreground">
-                                    Explorer
-                                  </span>
-                                </p>
-                                <p className="text-xs" data-description>
-                                  Performance and speed for efficiency.
-                                </p>
-                              </div>
-                            </div>
-                          </SelectItem>
-                          <SelectItem value="quantum">
-                            <div className="flex items-start gap-3 text-muted-foreground">
-                              <Turtle className="size-5" />
-                              <div className="grid gap-0.5">
-                                <p>
-                                  Neural{" "}
-                                  <span className="font-medium text-foreground">
-                                    Quantum
-                                  </span>
-                                </p>
-                                <p className="text-xs" data-description>
-                                  The most powerful model for complex
-                                  computations.
-                                </p>
-                              </div>
-                            </div>
-                          </SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
                     <div className="grid gap-3">
                       <Label htmlFor="agent-type-mobile">Agent Type</Label>
                       <Select value={agentType} onValueChange={setAgentType}>
@@ -597,7 +430,7 @@ export default function Dashboard() {
                   placeholder="Type your message here..."
                   value={inputMessage}
                   onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={handleKeyPress}
                   className="min-h-[0px] resize-none p-2"
                   rows={2}
                 />
@@ -627,7 +460,7 @@ export default function Dashboard() {
                   </legend>
                   <div className="grid gap-3">
                     <Label htmlFor="model">Model</Label>
-                    <Select>
+                    <Select value={selectedModel} onValueChange={setSelectedModel}>
                       <SelectTrigger
                         id="model"
                         className="items-start [&_[data-description]]:hidden"
@@ -635,50 +468,77 @@ export default function Dashboard() {
                         <SelectValue placeholder="Select a model" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="genesis">
+                        <SelectItem value="llama-3.1-70b-versatile">
                           <div className="flex items-start gap-3 text-muted-foreground">
                             <Rabbit className="size-5" />
                             <div className="grid gap-0.5">
                               <p>
-                                Neural{" "}
                                 <span className="font-medium text-foreground">
-                                  Genesis
+                                  LLama-3.1-70B
                                 </span>
                               </p>
                               <p className="text-xs" data-description>
-                                Our fastest model for general use cases.
+                                Large language model for versatile tasks.
                               </p>
                             </div>
                           </div>
                         </SelectItem>
-                        <SelectItem value="explorer">
+                        <SelectItem value="gpt-4o">
                           <div className="flex items-start gap-3 text-muted-foreground">
                             <Bird className="size-5" />
                             <div className="grid gap-0.5">
                               <p>
-                                Neural{" "}
                                 <span className="font-medium text-foreground">
-                                  Explorer
+                                  GPT-4o
                                 </span>
                               </p>
                               <p className="text-xs" data-description>
-                                Performance and speed for efficiency.
+                                Advanced model for complex reasoning.
                               </p>
                             </div>
                           </div>
                         </SelectItem>
-                        <SelectItem value="quantum">
+                        <SelectItem value="gpt-4o-mini">
                           <div className="flex items-start gap-3 text-muted-foreground">
                             <Turtle className="size-5" />
                             <div className="grid gap-0.5">
                               <p>
-                                Neural{" "}
                                 <span className="font-medium text-foreground">
-                                  Quantum
+                                  GPT-4o-mini
                                 </span>
                               </p>
                               <p className="text-xs" data-description>
-                                The most powerful model for complex computations.
+                                Efficient model balancing performance and speed.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gemini-1.5-flash">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <Zap className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                <span className="font-medium text-foreground">
+                                  Gemini Flash
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                Fast and efficient for quick responses.
+                              </p>
+                            </div>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="gemini-1.5-pro">
+                          <div className="flex items-start gap-3 text-muted-foreground">
+                            <Sparkles className="size-5" />
+                            <div className="grid gap-0.5">
+                              <p>
+                                <span className="font-medium text-foreground">
+                                  Gemini Pro
+                                </span>
+                              </p>
+                              <p className="text-xs" data-description>
+                                Advanced model for diverse applications.
                               </p>
                             </div>
                           </div>
