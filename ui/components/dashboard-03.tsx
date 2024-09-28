@@ -25,6 +25,7 @@ import {
   Send,
   Clipboard,
   Check,
+  User,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -509,62 +510,73 @@ export default function Dashboard() {
                   >
                     <Card className={`mb-4 ${msg.role === 'user' ? 'ml-auto' : 'mr-auto'} max-w-[80%]`}>
                       <CardContent className={`p-3 ${msg.role === 'user' ? '' : 'bg-secondary text-secondary-foreground'}`}>
-                        <div className="markdown-content">
-                          <ReactMarkdown
-                            components={{
-                              h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mb-4" {...props} />,
-                              h2: ({ node, ...props }) => <h2 className="text-xl font-semibold mb-3" {...props} />,
-                              h3: ({ node, ...props }) => <h3 className="text-lg font-medium mb-2" {...props} />,
-                              p: ({ node, ...props }) => <p className="mb-4" {...props} />,
-                              ul: ({ node, ...props }) => <ul className="list-disc pl-6 mb-4" {...props} />,
-                              ol: ({ node, ...props }) => <ol className="list-decimal pl-6 mb-4" {...props} />,
-                              li: ({ node, ...props }) => <li className="mb-1" {...props} />,
-                              blockquote: ({ node, ...props }) => (
-                                <blockquote className="border-l-4 border-primary pl-4 italic my-4" {...props} />
-                              ),
-                              code({ node, inline, className, children, ...props }) {
-                                const match = /language-(\w+)/.exec(className || '')
-                                return !inline && match ? (
-                                  <div className="relative">
-                                    <div className="absolute top-0 right-0 bg-muted text-muted-foreground text-xs px-2 py-1 rounded-bl">
-                                      {match[1]}
-                                      <button
-                                        onClick={() => copyToClipboard(String(children), 'code', index)}
-                                        className="ml-2 focus:outline-none"
-                                      >
-                                        {copiedCode[index] ? <Check size={14} /> : <Clipboard size={14} />}
-                                      </button>
-                                    </div>
-                                    <SyntaxHighlighter
-                                      style={tomorrow}
-                                      language={match[1]}
-                                      PreTag="div"
-                                      className="rounded-md !mt-6 !mb-4"
-                                      {...props}
-                                    >
-                                      {String(children).replace(/\n$/, '')}
-                                    </SyntaxHighlighter>
-                                  </div>
-                                ) : (
-                                  <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded" {...props}>
-                                    {children}
-                                  </code>
-                                )
-                              }
-                            }}
-                          >
-                            {msg.content}
-                          </ReactMarkdown>
+                        <div className="flex items-start">
+                          <div className="mr-3 mt-0.5">
+                            {msg.role === 'user' ? (
+                              <User className="h-6 w-6 text-primary" />
+                            ) : (
+                              <Bot className="h-6 w-6 text-primary" />
+                            )}
+                          </div>
+                          <div className="flex-1">
+                            <div className="markdown-content">
+                              <ReactMarkdown
+                                components={{
+                                  h1: ({ node, ...props }) => <h1 className="text-2xl font-bold mb-4" {...props} />,
+                                  h2: ({ node, ...props }) => <h2 className="text-xl font-semibold mb-3" {...props} />,
+                                  h3: ({ node, ...props }) => <h3 className="text-lg font-medium mb-2" {...props} />,
+                                  p: ({ node, ...props }) => <p className="mb-4" {...props} />,
+                                  ul: ({ node, ...props }) => <ul className="list-disc pl-6 mb-4" {...props} />,
+                                  ol: ({ node, ...props }) => <ol className="list-decimal pl-6 mb-4" {...props} />,
+                                  li: ({ node, ...props }) => <li className="mb-1" {...props} />,
+                                  blockquote: ({ node, ...props }) => (
+                                    <blockquote className="border-l-4 border-primary pl-4 italic my-4" {...props} />
+                                  ),
+                                  code({ node, inline, className, children, ...props }) {
+                                    const match = /language-(\w+)/.exec(className || '')
+                                    return !inline && match ? (
+                                      <div className="relative">
+                                        <div className="absolute top-0 right-0 bg-muted text-muted-foreground text-xs px-2 py-1 rounded-bl">
+                                          {match[1]}
+                                          <button
+                                            onClick={() => copyToClipboard(String(children), 'code', index)}
+                                            className="ml-2 focus:outline-none"
+                                          >
+                                            {copiedCode[index] ? <Check size={14} /> : <Clipboard size={14} />}
+                                          </button>
+                                        </div>
+                                        <SyntaxHighlighter
+                                          style={tomorrow}
+                                          language={match[1]}
+                                          PreTag="div"
+                                          className="rounded-md !mt-6 !mb-4"
+                                          {...props}
+                                        >
+                                          {String(children).replace(/\n$/, '')}
+                                        </SyntaxHighlighter>
+                                      </div>
+                                    ) : (
+                                      <code className="bg-muted text-muted-foreground px-1 py-0.5 rounded" {...props}>
+                                        {children}
+                                      </code>
+                                    )
+                                  }
+                                }}
+                              >
+                                {msg.content}
+                              </ReactMarkdown>
+                            </div>
+                            {msg.role === 'assistant' && (
+                              <Button
+                                onClick={() => copyToClipboard(msg.content, 'response')}
+                                className="mt-2 text-xs"
+                                variant="outline"
+                              >
+                                {copiedResponse ? 'Copied!' : 'Copy Response'}
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                        {msg.role === 'assistant' && (
-                          <Button
-                            onClick={() => copyToClipboard(msg.content, 'response')}
-                            className="mt-2 text-xs"
-                            variant="outline"
-                          >
-                            {copiedResponse ? 'Copied!' : 'Copy Response'}
-                          </Button>
-                        )}
                       </CardContent>
                     </Card>
                   </motion.div>
