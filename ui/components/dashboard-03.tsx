@@ -22,6 +22,7 @@ import {
   ThumbsDown,
   Sun,
   Moon,
+  Send,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -58,6 +59,8 @@ import { useTheme } from "next-themes"
 import ReactMarkdown from 'react-markdown'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { Card, CardContent } from "@/components/ui/card"
 
 interface Message {
   role: 'user' | 'assistant';
@@ -461,7 +464,77 @@ export default function Dashboard() {
               <span className="sr-only">Toggle theme</span>
             </Button>
           </header>
-          <main className="grid flex-1 gap-4 overflow-auto p-4 md:grid-cols-2 lg:grid-cols-3">
+          <main className="grid flex-1 gap-4 p-4 md:grid-cols-3 lg:grid-cols-4">
+            <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-3">
+              <ScrollArea className="flex-1 pr-4">
+                {messages.map((msg, index) => (
+                  <Card key={index} className={`mb-4 ${msg.role === 'user' ? 'ml-auto' : 'mr-auto'} max-w-[80%]`}>
+                    <CardContent className={`p-3 ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
+                      <ReactMarkdown
+                        components={{
+                          code({node, inline, className, children, ...props}) {
+                            const match = /language-(\w+)/.exec(className || '')
+                            return !inline && match ? (
+                              <SyntaxHighlighter
+                                style={tomorrow}
+                                language={match[1]}
+                                PreTag="div"
+                                {...props}
+                              >
+                                {String(children).replace(/\n$/, '')}
+                              </SyntaxHighlighter>
+                            ) : (
+                              <code className={className} {...props}>
+                                {children}
+                              </code>
+                            )
+                          }
+                        }}
+                      >
+                        {msg.content}
+                      </ReactMarkdown>
+                    </CardContent>
+                  </Card>
+                ))}
+                {pendingMessage && (
+                  <Card className="mb-4 mr-auto max-w-[80%]">
+                    <CardContent className="p-3 bg-secondary text-secondary-foreground">
+                      {pendingMessage.content}
+                    </CardContent>
+                  </Card>
+                )}
+                {isLoading && (
+                  <div className="flex items-center space-x-2 text-muted-foreground">
+                    <div className="animate-pulse">●</div>
+                    <div className="animate-pulse animation-delay-200">●</div>
+                    <div className="animate-pulse animation-delay-400">●</div>
+                  </div>
+                )}
+              </ScrollArea>
+              <div className="mt-4">
+                <Textarea
+                  placeholder="Type your message here..."
+                  value={inputMessage}
+                  onChange={(e) => setInputMessage(e.target.value)}
+                  onKeyPress={handleKeyPress}
+                  className="min-h-[0px] resize-none p-2"
+                  rows={2}
+                />
+                <div className="mt-2 flex justify-between items-center">
+                  <Button variant="outline" size="icon">
+                    <Mic className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    onClick={handleSendMessage} 
+                    disabled={isLoading || !inputMessage.trim()}
+                    className="ml-auto"
+                  >
+                    {isLoading ? 'Sending...' : 'Send'}
+                    <Send className="ml-2 h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
             <div
               className="relative hidden flex-col items-start gap-8 md:flex"
               x-chunk="A settings form a configuring an AI model and messages."
@@ -592,105 +665,6 @@ export default function Dashboard() {
                   </div>
                 </fieldset>
               </form>
-            </div>
-            <div className="relative flex h-full min-h-[50vh] flex-col rounded-xl bg-muted/50 p-4 lg:col-span-2">
-              <div className="flex-1 overflow-auto">
-                {messages.map((msg, index) => (
-                  <div key={index} className={`mb-4 ${msg.role === 'user' ? 'text-right' : 'text-left'}`}>
-                    <div className={`inline-block p-2 rounded ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-secondary-foreground'}`}>
-                      <ReactMarkdown
-                        components={{
-                          code({node, inline, className, children, ...props}) {
-                            const match = /language-(\w+)/.exec(className || '')
-                            return !inline && match ? (
-                              <SyntaxHighlighter
-                                style={tomorrow}
-                                language={match[1]}
-                                PreTag="div"
-                                {...props}
-                              >
-                                {String(children).replace(/\n$/, '')}
-                              </SyntaxHighlighter>
-                            ) : (
-                              <code className={className} {...props}>
-                                {children}
-                              </code>
-                            )
-                          }
-                        }}
-                      >
-                        {msg.content}
-                      </ReactMarkdown>
-                    </div>
-                    {msg.role === 'assistant' && (
-                      <div className="mt-1 flex justify-start space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleFeedback(index, true)}
-                        >
-                          <ThumbsUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleFeedback(index, false)}
-                        >
-                          <ThumbsDown className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-                {pendingMessage && (
-                  <div className="mb-4 text-left">
-                    <div className="inline-block p-2 rounded bg-secondary text-secondary-foreground">
-                      {pendingMessage.content}
-                    </div>
-                  </div>
-                )}
-                {isLoading && (
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <div className="animate-pulse">●</div>
-                    <div className="animate-pulse animation-delay-200">●</div>
-                    <div className="animate-pulse animation-delay-400">●</div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-              <div className="relative overflow-hidden rounded-lg border bg-background focus-within:ring-1 focus-within:ring-ring">
-                <Label htmlFor="message" className="sr-only">
-                  Message
-                </Label>
-                <Textarea
-                  id="message"
-                  placeholder="Type your message here... (Markdown supported)"
-                  className="min-h-12 resize-none border-0 p-3 shadow-none focus-visible:ring-0"
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                />
-                <div className="flex items-center p-3 pt-0">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <Mic className="size-4" />
-                        <span className="sr-only">Use Microphone</span>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">Use Microphone</TooltipContent>
-                  </Tooltip>
-                  <Button 
-                    onClick={handleSendMessage} 
-                    size="sm" 
-                    className="ml-auto gap-1.5" 
-                    disabled={isLoading || !inputMessage.trim()}
-                  >
-                    {isLoading ? 'Sending...' : 'Send Message'}
-                    <CornerDownLeft className="size-3.5" />
-                  </Button>
-                </div>
-              </div>
             </div>
           </main>
         </div>
