@@ -64,6 +64,7 @@ import { tomorrow } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Card, CardContent } from "@/components/ui/card"
 import { motion } from "framer-motion";
+import './animations.css'; // Import the CSS file for animations
 
 interface Message {
   role: 'user' | 'assistant';
@@ -487,6 +488,7 @@ export default function Dashboard() {
                 {messages.map((msg, index) => (
                   <motion.div
                     key={index}
+                    className={msg.role === 'assistant' ? 'response' : ''}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: index * 0.1 }}
@@ -561,22 +563,10 @@ export default function Dashboard() {
                   </Card>
                 )}
                 {isLoading && (
-                  <div className="flex items-center space-x-2 text-muted-foreground">
-                    <motion.div
-                      className="w-2 h-2 bg-primary rounded-full"
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 1, repeat: Infinity }}
-                    />
-                    <motion.div
-                      className="w-2 h-2 bg-primary rounded-full"
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 1, delay: 0.2, repeat: Infinity }}
-                    />
-                    <motion.div
-                      className="w-2 h-2 bg-primary rounded-full"
-                      animate={{ scale: [1, 1.2, 1] }}
-                      transition={{ duration: 1, delay: 0.4, repeat: Infinity }}
-                    />
+                  <div className="flex items-center space-x-2 text-muted-foreground loading-indicator">
+                    <div className="w-2 h-2 bg-primary rounded-full" />
+                    <div className="w-2 h-2 bg-primary rounded-full" />
+                    <div className="w-2 h-2 bg-primary rounded-full" />
                   </div>
                 )}
               </ScrollArea>
